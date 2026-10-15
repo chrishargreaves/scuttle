@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCUTTLE</title>
+<style>/*__APP_CSS__*/</style>
+</head>
+<body>
+<header id="bar">
+  <div class="brand" title="SOLVE-IT CASE/UCO TTL Examiner">SCUTTLE</div>
+  <label class="pick">Open file<input type="file" id="file" accept=".ttl,.turtle,text/turtle"></label>
+  <span class="fname" id="fname">no file loaded</span>
+  <span class="spacer"></span>
+  <span class="seg" id="segMode" hidden>
+    <button data-m="pop" class="on">Popover</button><button data-m="side">Sidebar</button>
+  </span>
+  <span class="seg" id="segFmt" hidden>
+    <button data-f="fmt" class="on">Fields</button><button data-f="raw">Raw</button>
+  </span>
+  <button id="reportBtn" class="status" hidden></button>
+</header>
+<main id="main">
+  <div id="mini" hidden><div id="miniRows"></div><div id="vp"></div></div>
+  <div id="srcwrap"><pre id="src"></pre></div>
+  <aside id="side" hidden></aside>
+</main>
+<div id="drop" hidden>Drop a Turtle file here</div>
+<div id="pop" hidden></div>
+<div id="reportPanel" hidden></div>
+<script>/*__N3__*/</script>
+<script>/*__ONTOLOGY_INDEX__*/</script>
+<script>/*__APP_JS__*/</script>
+</body>
+</html>

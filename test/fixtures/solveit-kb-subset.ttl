@@ -1,0 +1,40 @@
+# Extract of the SOLVE-IT knowledge base, for offline tests.
+@prefix solveit-core: <https://ontology.solveit-df.org/solveit/core/>.
+@prefix solveit-data: <https://ontology.solveit-df.org/solveit/data/>.
+@prefix uco-observable: <https://ontology.unifiedcyberontology.org/uco/observable/>.
+@prefix solveit-observable: <https://ontology.solveit-df.org/solveit/observable/>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+
+solveit-data:techniqueDFT-1069 a owl:Class, solveit-core:Technique;
+    rdfs:label "DFT-1069: Extract artifacts from a web browser"@en;
+    rdfs:subClassOf solveit-core:SolveitInvestigativeAction;
+    solveit-core:techniqueID "DFT-1069";
+    solveit-core:techniqueName "Extract artifacts from a web browser";
+    solveit-core:techniqueDescription "Recovery of information left from web browsing activity (derived from Oh et al (2011))";
+    solveit-core:techniqueDetails "This may involve: history, cached items, bookmarks, cookies, saved passwords, form data.";
+    solveit-core:hasCASEInputClass solveit-observable:BrowserAppFiles;
+    solveit-core:hasCASEOutputClass uco-observable:BrowserBookmark, uco-observable:BrowserCookie, uco-observable:CookieHistory, uco-observable:URLHistory, uco-observable:URLHistoryEntry, uco-observable:URLVisit;
+    solveit-core:hasPotentialWeakness solveit-data:weaknessDFW-1113, solveit-data:weaknessDFW-1250, solveit-data:weaknessDFW-1251;
+    solveit-core:hasSubtechnique solveit-data:techniqueDFT-1137, solveit-data:techniqueDFT-1138, solveit-data:techniqueDFT-1139, solveit-data:techniqueDFT-1140, solveit-data:techniqueDFT-1141, solveit-data:techniqueDFT-1142, solveit-data:techniqueDFT-1143, solveit-data:techniqueDFT-1144, solveit-data:techniqueDFT-1145, solveit-data:techniqueDFT-1146, solveit-data:techniqueDFT-1147, solveit-data:techniqueDFT-1148;
+    solveit-core:hasReference solveit-data:citationDFCite-1038, solveit-data:citationDFCite-1108.
+solveit-data:techniqueDFT-1137 a owl:Class, solveit-core:Technique;
+    rdfs:label "DFT-1137: Extract browser history artifacts"@en;
+    rdfs:subClassOf solveit-data:techniqueDFT-1069;
+    solveit-core:techniqueID "DFT-1137";
+    solveit-core:techniqueName "Extract browser history artifacts";
+    solveit-core:techniqueDescription "The examination of the history component of a web browser.";
+    solveit-core:techniqueDetails "Typically this would involve the examination of data in one or more SQLite tables.";
+    solveit-core:hasSynonym "internet history examination", "web history examination";
+    solveit-core:hasExample "History for Chrome", "places.sqlite for Firefox";
+    solveit-core:hasCASEInputClass solveit-observable:BrowserAppFiles;
+    solveit-core:hasCASEOutputClass uco-observable:URLHistory;
+    solveit-core:hasPotentialWeakness solveit-data:weaknessDFW-1108, solveit-data:weaknessDFW-1109, solveit-data:weaknessDFW-1110, solveit-data:weaknessDFW-1111, solveit-data:weaknessDFW-1112, solveit-data:weaknessDFW-1243, solveit-data:weaknessDFW-1244, solveit-data:weaknessDFW-1245, solveit-data:weaknessDFW-1246.
+solveit-data:techniqueDFT-1167 a owl:Class, solveit-core:Technique;
+    rdfs:label "DFT-1167: Extract search terms from URLs"@en;
+    rdfs:subClassOf solveit-data:techniqueDFT-1069;
+    solveit-core:techniqueID "DFT-1167";
+    solveit-core:techniqueName "Extract search terms from URLs";
+    solveit-core:techniqueDescription "Parsing a URL and extracting search terms from the parameters.";
+    solveit-core:hasCASEInputClass uco-observable:URLHistory;
+    solveit-core:hasCASEOutputClass uco-observable:keywordSearchTerm.

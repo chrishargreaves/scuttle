@@ -1,0 +1,12 @@
+{
+  "name": "scuttle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SCUTTLE - SOLVE-IT CASE/UCO TTL Examiner. A single-file viewer for CASE/UCO Turtle exports.",
+  "scripts": {
+    "build:index": "node tools/build-index.mjs",
+    "build": "node tools/bundle.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}

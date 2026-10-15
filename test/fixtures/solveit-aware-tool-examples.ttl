@@ -1,0 +1,502 @@
+@prefix rdf:      <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:     <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:      <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh:       <http://www.w3.org/ns/shacl#> .
+@prefix uco-core:          <https://ontology.unifiedcyberontology.org/uco/core/> .
+@prefix observable:        <https://ontology.unifiedcyberontology.org/uco/observable/> .
+@prefix configuration:     <https://ontology.unifiedcyberontology.org/uco/configuration/> .
+@prefix tool:              <https://ontology.unifiedcyberontology.org/uco/tool/> .
+@prefix solve-it:          <https://solve-it.df/ontology/> .
+@prefix solve-it-kb:       <https://solve-it.df/kb/> .
+@prefix kb:                <http://example.org/kb/> .
+
+
+# =============================================================================
+# PART 1: SOLVE-IT ONTOLOGY ADDITIONS - Core Classes and Properties
+# =============================================================================
+
+# --- CapabilityProfile ---
+# A declaration of what a specific version of a tool can do and what 
+# mitigations it implements, published by a specific party (vendor, 
+# testing lab, etc.). Distributed as a file (TTL/JSON-LD) per tool version.
+
+solve-it:CapabilityProfile a owl:Class ;
+    rdfs:label "Capability Profile" ;
+    rdfs:comment """A declaration of the techniques a tool can perform and 
+    the mitigations it implements, published by a specific party for a 
+    specific tool version. Profiles are additive — multiple profiles for 
+    the same tool version (e.g., vendor profile + third-party testing) 
+    can be combined to give a complete picture of capabilities.""" .
+
+solve-it:profileFor a owl:ObjectProperty ;
+    rdfs:domain solve-it:CapabilityProfile ;
+    rdfs:range uco-core:Tool ;
+    rdfs:label "profile for" ;
+    rdfs:comment "The tool this capability profile describes." .
+
+solve-it:toolVersion a owl:DatatypeProperty ;
+    rdfs:domain solve-it:CapabilityProfile ;
+    rdfs:range xsd:string ;
+    rdfs:label "tool version" ;
+    rdfs:comment "The specific version of the tool this profile covers." .
+
+solve-it:publishedBy a owl:ObjectProperty ;
+    rdfs:domain solve-it:CapabilityProfile ;
+    rdfs:range uco-core:Identity ;
+    rdfs:label "published by" ;
+    rdfs:comment """The party that published this profile — e.g., the tool 
+    vendor, an independent testing laboratory, or a standards body.""" .
+
+solve-it:publishedDate a owl:DatatypeProperty ;
+    rdfs:domain solve-it:CapabilityProfile ;
+    rdfs:range xsd:dateTime ;
+    rdfs:label "published date" ;
+    rdfs:comment "The date this profile was published." .
+
+solve-it:supportsTechnique a owl:ObjectProperty ;
+    rdfs:domain solve-it:CapabilityProfile ;
+    rdfs:range solve-it:Technique ;
+    rdfs:label "supports technique" ;
+    rdfs:comment """A SOLVE-IT technique that this tool version is capable 
+    of performing, as declared by the profile publisher.""" .
+
+solve-it:hasMitigationCapability a owl:ObjectProperty ;
+    rdfs:domain solve-it:CapabilityProfile ;
+    rdfs:range solve-it:MitigationCapability ;
+    rdfs:label "has mitigation capability" ;
+    rdfs:comment """A mitigation capability declared in this profile.""" .
+
+
+# --- MitigationCapability ---
+# A claim that a mitigation is implemented, subject to conditions.
+
+solve-it:MitigationCapability a owl:Class ;
+    rdfs:label "Mitigation Capability" ;
+    rdfs:comment """Represents a claim that a specific SOLVE-IT mitigation is 
+    implemented, subject to conditions. The conditions are expressed as SHACL 
+    NodeShapes evaluated against a specific component of the action (object, 
+    instrument, results, or performer).""" .
+
+solve-it:implementsMitigation a owl:ObjectProperty ;
+    rdfs:domain solve-it:MitigationCapability ;
+    rdfs:range solve-it:Mitigation ;
+    rdfs:label "implements mitigation" ;
+    rdfs:comment "The SOLVE-IT mitigation that this capability implements." .
+
+solve-it:appliesWhen a owl:ObjectProperty ;
+    rdfs:domain solve-it:MitigationCapability ;
+    rdfs:range sh:NodeShape ;
+    rdfs:label "applies when" ;
+    rdfs:comment """A SHACL NodeShape that defines the conditions under which 
+    this mitigation is active. The shape is evaluated against the action 
+    component identified by conditionTarget. If no appliesWhen is specified, 
+    the mitigation is unconditionally active whenever the profile is 
+    consulted.""" .
+
+solve-it:conditionTarget a owl:ObjectProperty ;
+    rdfs:domain solve-it:MitigationCapability ;
+    rdfs:range solve-it:ConditionTargetType ;
+    rdfs:label "condition target" ;
+    rdfs:comment """Specifies which component of the action the appliesWhen 
+    shape should be evaluated against. Required if appliesWhen is specified; 
+    not needed for unconditional mitigations.""" .
+
+
+# --- ConditionTarget Types ---
+# Aligned with the core components of a CASE/UCO action.
+
+solve-it:ConditionTargetType a owl:Class ;
+    rdfs:label "Condition Target Type" ;
+    rdfs:comment """The component of a PerformedTechnique that a mitigation 
+    condition evaluates against. Aligned with the standard components of a 
+    CASE/UCO action.""" .
+
+solve-it:ObjectTarget a solve-it:ConditionTargetType ;
+    rdfs:label "Object Target" ;
+    rdfs:comment """Condition evaluates against the object (input) of the 
+    technique — what was examined. Resolves to the value of 
+    solve-it:hasInput on the PerformedTechnique.""" .
+
+solve-it:InstrumentTarget a solve-it:ConditionTargetType ;
+    rdfs:label "Instrument Target" ;
+    rdfs:comment """Condition evaluates against the instrument — the tool as 
+    configured for this execution. Resolves to the PerformedTechnique 
+    itself, allowing the SHACL shape to navigate to both tool properties 
+    (via solve-it:toolUsed) and configuration properties (via 
+    solve-it:hasConfiguration).""" .
+
+solve-it:ResultsTarget a solve-it:ConditionTargetType ;
+    rdfs:label "Results Target" ;
+    rdfs:comment """Condition evaluates against the results (output) of the 
+    technique — what was produced. Resolves to the value of 
+    solve-it:hasOutput on the PerformedTechnique.""" .
+
+solve-it:PerformerTarget a solve-it:ConditionTargetType ;
+    rdfs:label "Performer Target" ;
+    rdfs:comment """Condition evaluates against the person who performed the 
+    technique. Could encompass qualifications, certifications, or training 
+    requirements. Resolves to the value of solve-it:performer on the 
+    PerformedTechnique.""" .
+
+
+# --- FileFromApplication ---
+# A convenience class for files known to originate from a specific 
+# application version.
+
+solve-it:FileFromApplication a owl:Class ;
+    rdfs:subClassOf observable:File ;
+    rdfs:label "File From Application" ;
+    rdfs:comment """A file that is known to be associated with a specific 
+    application at a specific version. Provides direct properties for 
+    application identity and version to simplify SHACL condition evaluation, 
+    avoiding the need to traverse CASE Relationship objects.""" .
+
+solve-it:applicationId a owl:DatatypeProperty ;
+    rdfs:domain solve-it:FileFromApplication ;
+    rdfs:range xsd:string ;
+    rdfs:label "application identifier" ;
+    rdfs:comment """The identifier of the application this file is associated 
+    with (e.g., 'com.whatsapp', 'com.apple.MobileSMS').""" .
+
+solve-it:applicationVersion a owl:DatatypeProperty ;
+    rdfs:domain solve-it:FileFromApplication ;
+    rdfs:range xsd:string ;
+    rdfs:label "application version" ;
+    rdfs:comment """The specific version string of the application this file 
+    is associated with (e.g., '13.2', '24.1.75').""" .
+
+
+# --- PerformedTechnique additions ---
+
+solve-it:hasConfiguration a owl:ObjectProperty ;
+    rdfs:domain solve-it:PerformedTechnique ;
+    rdfs:range configuration:Configuration ;
+    rdfs:label "has configuration" ;
+    rdfs:comment """The tool configuration that was in effect when this 
+    technique was performed.""" .
+
+solve-it:consultedProfile a owl:ObjectProperty ;
+    rdfs:domain solve-it:PerformedTechnique ;
+    rdfs:range solve-it:CapabilityProfile ;
+    rdfs:label "consulted profile" ;
+    rdfs:comment """A CapabilityProfile that was consulted when assessing 
+    mitigation coverage for this performed technique. Multiple profiles 
+    may be consulted (e.g., vendor profile + third-party testing).""" .
+
+
+# =============================================================================
+# PART 2: WORKED EXAMPLE 1 — WhatsApp Chat App Examination
+# =============================================================================
+#
+# Scenario: 
+# - "Example Forensic Tool" v5.0 is used for chat app examination
+# - The vendor publishes a CapabilityProfile declaring it supports T1072
+#   and implements hash verification (M1027, unconditional)
+# - A third-party testing lab (DFRL) has independently tested message 
+#   extraction for WhatsApp versions 13.0-13.3 and 14.0, and publishes 
+#   a supplementary profile declaring M1054 with version conditions
+# - The examiner processes WhatsApp v13.2 → both profiles consulted
+#
+# Technique:  T1072 - Chat app examination
+# Weakness:   W1085 - Missing messages from the live set of messages
+# Mitigations: 
+#   M1027 - Hash verification (vendor-declared, unconditional)
+#   M1054 - Testing of message extraction (third-party, version-conditional)
+# =============================================================================
+
+# --- Tool (plain uco-core:Tool, no special subclass needed) ---
+
+kb:example-forensic-tool a uco-core:Tool ;
+    rdfs:label "Example Forensic Tool" ;
+    uco-core:name "Example Forensic Tool" .
+
+# --- Publisher Identities ---
+
+kb:eft-vendor a uco-core:Identity ;
+    uco-core:name "Example Forensic Tool Ltd." .
+
+kb:dfrl a uco-core:Identity ;
+    uco-core:name "Digital Forensics Research Laboratory" .
+
+
+# --- VENDOR PROFILE: Example Forensic Tool v5.0 ---
+# This is what the vendor ships with their tool release.
+# It declares supported techniques and built-in mitigations.
+
+kb:eft-v50-vendor-profile a solve-it:CapabilityProfile ;
+    rdfs:label "Example Forensic Tool v5.0 - Vendor Profile" ;
+    solve-it:profileFor kb:example-forensic-tool ;
+    solve-it:toolVersion "5.0" ;
+    solve-it:publishedBy kb:eft-vendor ;
+    solve-it:publishedDate "2025-06-01T00:00:00Z"^^xsd:dateTime ;
+    # Techniques this tool version can perform
+    solve-it:supportsTechnique solve-it-kb:T1072 ;   # Chat app examination
+    solve-it:supportsTechnique solve-it-kb:T1059 ;   # Identify partitions
+    solve-it:supportsTechnique solve-it-kb:T1001 ;   # File hashing
+    # Built-in mitigations
+    solve-it:hasMitigationCapability kb:cap-eft-hash-verification .
+
+# Hash verification — unconditional, always active when this tool is used.
+# No appliesWhen or conditionTarget needed.
+
+kb:cap-eft-hash-verification a solve-it:MitigationCapability ;
+    rdfs:label "Built-in hash verification" ;
+    rdfs:comment """Example Forensic Tool automatically verifies hashes of 
+    all extracted data against source hashes. This mitigation is always 
+    active and requires no specific configuration.""" ;
+    solve-it:implementsMitigation solve-it-kb:M1027 .
+
+
+# --- THIRD-PARTY PROFILE: DFRL testing of WhatsApp extraction ---
+# Published by an independent testing lab after testing message extraction.
+# This supplements the vendor profile with additional mitigation claims.
+
+kb:eft-v50-dfrl-whatsapp a solve-it:CapabilityProfile ;
+    rdfs:label "EFT v5.0 - DFRL WhatsApp Testing Report" ;
+    solve-it:profileFor kb:example-forensic-tool ;
+    solve-it:toolVersion "5.0" ;
+    solve-it:publishedBy kb:dfrl ;
+    solve-it:publishedDate "2025-09-15T00:00:00Z"^^xsd:dateTime ;
+    # This profile only covers WhatsApp-related capabilities
+    solve-it:supportsTechnique solve-it-kb:T1072 ;
+    # Mitigation with version conditions
+    solve-it:hasMitigationCapability kb:cap-dfrl-whatsapp-msg-testing .
+
+kb:cap-dfrl-whatsapp-msg-testing a solve-it:MitigationCapability ;
+    rdfs:label "DFRL WhatsApp message extraction testing" ;
+    rdfs:comment """The Digital Forensics Research Laboratory has tested 
+    Example Forensic Tool v5.0 for complete message extraction against the 
+    following WhatsApp versions: 13.0, 13.1, 13.2, 13.3, 14.0. All live 
+    messages were correctly extracted in each tested version.""" ;
+    solve-it:implementsMitigation solve-it-kb:M1054 ;
+    solve-it:conditionTarget solve-it:ObjectTarget ;
+    solve-it:appliesWhen kb:shape-whatsapp-tested-versions .
+
+# --- SHACL Condition Shape: WhatsApp version check ---
+
+kb:shape-whatsapp-tested-versions a sh:NodeShape ;
+    sh:severity sh:Info ;
+    sh:message """Mitigation M1054 (Testing of message extraction and parsing 
+    features) has not been verified for this WhatsApp version by DFRL. 
+    Tested versions: 13.0, 13.1, 13.2, 13.3, 14.0.""" ;
+    sh:property [
+        sh:path solve-it:applicationId ;
+        sh:hasValue "com.whatsapp"
+    ] ;
+    sh:property [
+        sh:path solve-it:applicationVersion ;
+        sh:in ( "13.0" "13.1" "13.2" "13.3" "14.0" )
+    ] .
+
+
+# --- Case Data: Input files ---
+
+kb:msgstore-db-v132 a solve-it:FileFromApplication ;
+    uco-core:hasFacet [
+        a observable:FileFacet ;
+        observable:fileName "msgstore.db" ;
+        observable:filePath "/data/data/com.whatsapp/databases/msgstore.db"
+    ] ;
+    solve-it:applicationId "com.whatsapp" ;
+    solve-it:applicationVersion "13.2" .
+
+kb:msgstore-db-v150 a solve-it:FileFromApplication ;
+    uco-core:hasFacet [
+        a observable:FileFacet ;
+        observable:fileName "msgstore.db" ;
+        observable:filePath "/data/data/com.whatsapp/databases/msgstore.db"
+    ] ;
+    solve-it:applicationId "com.whatsapp" ;
+    solve-it:applicationVersion "15.0" .
+
+
+# --- PerformedTechnique: WhatsApp v13.2 (both mitigations ACTIVE) ---
+# Examiner loads both profiles. M1027 is unconditionally active from the
+# vendor profile. M1054 is active from the DFRL profile because v13.2 
+# is in the tested list.
+
+kb:performed-chat-exam-001 a solve-it:PerformedTechnique ;
+    rdfs:label "WhatsApp examination - case 2025-001" ;
+    solve-it:techniqueUsed solve-it-kb:T1072 ;
+    solve-it:hasInput kb:msgstore-db-v132 ;
+    solve-it:toolUsed kb:example-forensic-tool ;
+    solve-it:consultedProfile kb:eft-v50-vendor-profile ;
+    solve-it:consultedProfile kb:eft-v50-dfrl-whatsapp .
+
+# --- PerformedTechnique: WhatsApp v15.0 (M1027 active, M1054 NOT VERIFIED) ---
+# M1027 still active (unconditional). M1054 fails because v15.0 is not 
+# in the DFRL tested list.
+
+kb:performed-chat-exam-002 a solve-it:PerformedTechnique ;
+    rdfs:label "WhatsApp examination - case 2025-002" ;
+    solve-it:techniqueUsed solve-it-kb:T1072 ;
+    solve-it:hasInput kb:msgstore-db-v150 ;
+    solve-it:toolUsed kb:example-forensic-tool ;
+    solve-it:consultedProfile kb:eft-v50-vendor-profile ;
+    solve-it:consultedProfile kb:eft-v50-dfrl-whatsapp .
+
+
+# =============================================================================
+# PART 3: WORKED EXAMPLE 2 — Partition Identification with X-Ways
+# =============================================================================
+#
+# Scenario:
+# - X-Ways Forensics v20.3 is used for partition identification
+# - The vendor publishes a CapabilityProfile declaring support for T1059
+#   and declaring M1044 conditional on the scanForLostPartitions setting
+#
+# Technique:  T1059 - Identify partitions
+# Weakness:   W1066 - Missing deleted but recoverable partitions from 
+#                      unpartitioned space
+# Mitigation: M1044 - Scan for Volume Boot Records in unpartitioned space
+# =============================================================================
+
+# --- Tool ---
+
+kb:xways a uco-core:Tool ;
+    rdfs:label "X-Ways Forensics" ;
+    uco-core:name "X-Ways Forensics" .
+
+# --- Publisher Identity ---
+
+kb:xways-vendor a uco-core:Identity ;
+    uco-core:name "X-Ways Software Technology AG" .
+
+
+# --- VENDOR PROFILE: X-Ways v20.3 ---
+
+kb:xways-v203-vendor-profile a solve-it:CapabilityProfile ;
+    rdfs:label "X-Ways Forensics v20.3 - Vendor Profile" ;
+    solve-it:profileFor kb:xways ;
+    solve-it:toolVersion "20.3" ;
+    solve-it:publishedBy kb:xways-vendor ;
+    solve-it:publishedDate "2025-10-01T00:00:00Z"^^xsd:dateTime ;
+    # Techniques
+    solve-it:supportsTechnique solve-it-kb:T1059 ;   # Identify partitions
+    solve-it:supportsTechnique solve-it-kb:T1001 ;   # File hashing
+    # Mitigations
+    solve-it:hasMitigationCapability kb:cap-xways-partition-scan .
+
+# Partition scanning — conditional on tool configuration
+
+kb:cap-xways-partition-scan a solve-it:MitigationCapability ;
+    rdfs:label "X-Ways lost partition scanning" ;
+    rdfs:comment """X-Ways implements M1044 through its 'Scan for Lost 
+    Partitions' feature. This mitigation is only active if the feature is 
+    enabled in the tool configuration.""" ;
+    solve-it:implementsMitigation solve-it-kb:M1044 ;
+    solve-it:conditionTarget solve-it:InstrumentTarget ;
+    solve-it:appliesWhen kb:shape-partition-scan-enabled .
+
+# --- SHACL Condition Shape ---
+# InstrumentTarget resolves to the PerformedTechnique itself.
+# Shape navigates via hasConfiguration to check the setting.
+
+kb:shape-partition-scan-enabled a sh:NodeShape ;
+    sh:severity sh:Info ;
+    sh:message """Mitigation M1044 (Scan for Volume Boot Records in 
+    unpartitioned space) requires the 'Scan for Lost Partitions' option 
+    to be enabled in X-Ways. This option was not enabled or not recorded 
+    in the tool configuration.""" ;
+    sh:property [
+        sh:path ( solve-it:hasConfiguration configuration:configurationEntry ) ;
+        sh:qualifiedValueShape [
+            a sh:NodeShape ;
+            sh:property [
+                sh:path configuration:itemName ;
+                sh:hasValue "scanForLostPartitions"
+            ] ;
+            sh:property [
+                sh:path configuration:itemValue ;
+                sh:hasValue "true"
+            ]
+        ] ;
+        sh:qualifiedMinCount 1
+    ] .
+
+
+# --- Case Data: Configurations ---
+
+kb:xways-config-with-scan a configuration:Configuration ;
+    rdfs:label "X-Ways configuration - scanning enabled" ;
+    configuration:configurationEntry [
+        a configuration:ConfigurationEntry ;
+        configuration:itemName "scanForLostPartitions" ;
+        configuration:itemValue "true"
+    ] ;
+    configuration:configurationEntry [
+        a configuration:ConfigurationEntry ;
+        configuration:itemName "hashAlgorithm" ;
+        configuration:itemValue "SHA-256"
+    ] .
+
+kb:xways-config-without-scan a configuration:Configuration ;
+    rdfs:label "X-Ways configuration - scanning disabled" ;
+    configuration:configurationEntry [
+        a configuration:ConfigurationEntry ;
+        configuration:itemName "scanForLostPartitions" ;
+        configuration:itemValue "false"
+    ] ;
+    configuration:configurationEntry [
+        a configuration:ConfigurationEntry ;
+        configuration:itemName "hashAlgorithm" ;
+        configuration:itemValue "SHA-256"
+    ] .
+
+# --- Case Data: Disk image input ---
+
+kb:disk-image-001 a observable:ObservableObject ;
+    uco-core:hasFacet [
+        a observable:FileFacet ;
+        observable:fileName "evidence-disk.E01"
+    ] ;
+    uco-core:hasFacet [
+        a observable:ContentDataFacet ;
+        observable:mimeType "application/x-ewf-e01"
+    ] .
+
+# --- PerformedTechnique: Scanning enabled (M1044 ACTIVE) ---
+
+kb:performed-partition-id-001 a solve-it:PerformedTechnique ;
+    rdfs:label "Partition identification - case 2025-003 (scan enabled)" ;
+    solve-it:techniqueUsed solve-it-kb:T1059 ;
+    solve-it:hasInput kb:disk-image-001 ;
+    solve-it:toolUsed kb:xways ;
+    solve-it:hasConfiguration kb:xways-config-with-scan ;
+    solve-it:consultedProfile kb:xways-v203-vendor-profile .
+
+# --- PerformedTechnique: Scanning disabled (M1044 NOT ACTIVE) ---
+
+kb:performed-partition-id-002 a solve-it:PerformedTechnique ;
+    rdfs:label "Partition identification - case 2025-003 (scan disabled)" ;
+    solve-it:techniqueUsed solve-it-kb:T1059 ;
+    solve-it:hasInput kb:disk-image-001 ;
+    solve-it:toolUsed kb:xways ;
+    solve-it:hasConfiguration kb:xways-config-without-scan ;
+    solve-it:consultedProfile kb:xways-v203-vendor-profile .
+
+
+# =============================================================================
+# PART 4: TECHNIQUE MISMATCH EXAMPLE
+# =============================================================================
+# What happens if an examiner claims to have used X-Ways v20.3 for T1072 
+# (Chat app examination), but the vendor profile doesn't list T1072 as a 
+# supported technique?
+#
+# The workflow tool would check:
+#   Does any consultedProfile have supportsTechnique T1072?
+#   Answer: No — kb:xways-v203-vendor-profile only lists T1059 and T1001.
+#   Result: FLAG — "X-Ways Forensics v20.3 does not declare support for 
+#           T1072 (Chat app examination) in the consulted profiles."
+# =============================================================================
+
+kb:performed-chat-exam-003 a solve-it:PerformedTechnique ;
+    rdfs:label "Chat examination with wrong tool - case 2025-004" ;
+    rdfs:comment """This PerformedTechnique would be flagged by the workflow 
+    tool because T1072 is not listed as a supported technique in the 
+    consulted X-Ways v20.3 vendor profile.""" ;
+    solve-it:techniqueUsed solve-it-kb:T1072 ;
+    solve-it:hasInput kb:msgstore-db-v132 ;
+    solve-it:toolUsed kb:xways ;
+    solve-it:consultedProfile kb:xways-v203-vendor-profile .

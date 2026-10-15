@@ -1,0 +1,4 @@
+node_modules/
+dist/
+.ontology-sources/
+.playwright-mcp/
