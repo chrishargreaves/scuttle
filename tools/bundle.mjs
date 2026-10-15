@@ -28,6 +28,7 @@ export const MODULES = [
   'src/ui/overview.js',
   'src/ui/resolved-view.js',
   'src/ui/report-panel.js',
+  'src/ui/tabs.js',
   'src/main.js',
 ];
 

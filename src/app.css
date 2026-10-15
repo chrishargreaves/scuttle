@@ -114,3 +114,39 @@ body {
   font-size: 20px; color: var(--acc); pointer-events: none;
 }
 .empty { padding: 40px 16px; color: var(--dim); text-align: center; font-family: sans-serif; }
+
+/* Brand: a hover (or keyboard focus) spells out the acronym. */
+#bar .brand { position: relative; cursor: help; }
+#bar .brand .beta {
+  margin-left: 6px; padding: 0 5px; border-radius: 3px; background: var(--acc); color: #fff;
+  font-size: 9.5px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; vertical-align: 1px;
+}
+#bar .brand .tip {
+  position: absolute; left: 0; top: calc(100% + 6px); z-index: 70; white-space: nowrap;
+  padding: 5px 9px; border-radius: 4px; background: var(--fg); color: #fff;
+  font-size: 12px; font-weight: 400; box-shadow: 0 4px 14px rgba(0,0,0,.2);
+  visibility: hidden; opacity: 0; transition: opacity .12s;
+}
+#bar .brand .tip b { color: #ffd76a; }
+#bar .brand:hover .tip, #bar .brand:focus .tip { visibility: visible; opacity: 1; }
+
+/* One tab per open file. */
+#tabs {
+  display: flex; gap: 2px; padding: 4px 8px 0; overflow-x: auto;
+  background: #f2f2ec; border-bottom: 1px solid var(--line);
+}
+#tabs .tab {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 240px; flex: 0 0 auto;
+  padding: 3px 4px 3px 10px; border: 1px solid var(--line); border-bottom: 0; border-radius: 5px 5px 0 0;
+  background: #e9e9e2; font: 12px ui-monospace, Menlo, monospace; color: var(--dim); cursor: pointer;
+}
+#tabs .tab:hover { background: #f6f6f1; }
+#tabs .tab.on { background: #fff; color: var(--fg); margin-bottom: -1px; padding-bottom: 4px; }
+#tabs .tname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#tabs .tclose {
+  font: inherit; font-size: 13px; line-height: 1; padding: 1px 4px; border: 0; border-radius: 3px;
+  background: transparent; color: var(--dim); cursor: pointer;
+}
+#tabs .tclose:hover { background: #ddddd4; color: var(--fg); }
+#bar .srclink { font-size: 12px; color: var(--acc); text-decoration: none; }
+#bar .srclink:hover { text-decoration: underline; }

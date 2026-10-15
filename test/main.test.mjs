@@ -10,7 +10,7 @@ import { MODULES, stripModuleSyntax } from '../tools/bundle.mjs';
 import { loadN3, fixture } from './helpers/n3.mjs';
 
 const ELEMENT_IDS = [
-  'file', 'fname', 'src', 'srcwrap', 'mini', 'miniRows', 'vp', 'side', 'pop',
+  'file', 'tabs', 'fname', 'src', 'srcwrap', 'mini', 'miniRows', 'vp', 'side', 'pop',
   'segMode', 'segFmt', 'reportBtn', 'reportPanel', 'drop',
 ];
 
@@ -166,4 +166,79 @@ test('a drop that never emits dragleave still clears the overlay', async () => {
   h.document.fire('dragenter', { preventDefault() {} });
   h.document.fire('drop', { preventDefault() {}, dataTransfer: { files: [] } });
   assert.equal(h.els.drop.hidden, true);
+});
+
+function pickFiles(harness, files) {
+  harness.els.file.fire('change', {
+    target: { files: files.map(([name, text]) => ({ name, text: async () => text })) },
+  });
+}
+
+// A click whose target sits inside the element carrying `attr`.
+function clickOn(attr, value) {
+  return { target: { closest: selector => (selector === `[${attr}]` ? { dataset: { [attr.replace('data-', '').replace(/-(.)/g, (_, c) => c.toUpperCase())]: String(value) } } : null) } };
+}
+
+test('choosing several files opens a tab for each and shows the last', async () => {
+  const h = makeHarness();
+  runBundle(h, async () => ({ ok: true, status: 200, text: async () => '' }));
+  pickFiles(h, [['one.ttl', SMALL], ['two.ttl', SMALL + 'ex:b ex:p ex:o2 .\n']]);
+  await settle();
+
+  assert.equal(h.els.tabs.hidden, false);
+  assert.match(h.els.tabs.innerHTML, /one\.ttl[\s\S]*two\.ttl/, 'tabs keep the order chosen');
+  assert.equal((h.els.tabs.innerHTML.match(/class="tab/g) ?? []).length, 2);
+  assert.equal(h.els.fname.textContent, 'two.ttl');
+  assert.match(h.els.src.innerHTML, /ex:b/);
+});
+
+test('switching tabs shows that file and its own report', async () => {
+  const h = makeHarness();
+  runBundle(h, async () => ({ ok: true, status: 200, text: async () => '' }));
+  pickFiles(h, [['one.ttl', SMALL], ['two.ttl', SMALL + 'ex:b ex:p ex:o2 .\n']]);
+  await settle();
+
+  h.els.tabs.fire('click', clickOn('data-tab', 1));
+  assert.equal(h.els.fname.textContent, 'one.ttl');
+  assert.doesNotMatch(h.els.src.innerHTML, /ex:b/);
+  assert.equal(h.els.reportBtn.hidden, false, 'the first file keeps its report');
+  assert.equal(h.els.reportPanel.hidden, true, 'no report left open from the other file');
+});
+
+test('opening the same file again reuses its tab', async () => {
+  const h = makeHarness();
+  runBundle(h, async () => ({ ok: true, status: 200, text: async () => '' }));
+  pickFiles(h, [['one.ttl', SMALL]]);
+  await settle();
+  pickFiles(h, [['one.ttl', SMALL]]);
+  await settle();
+  assert.equal((h.els.tabs.innerHTML.match(/class="tab/g) ?? []).length, 1);
+});
+
+test('closing tabs moves to a neighbour, then back to the empty page', async () => {
+  const h = makeHarness();
+  runBundle(h, async () => ({ ok: true, status: 200, text: async () => '' }));
+  pickFiles(h, [['one.ttl', SMALL], ['two.ttl', SMALL + 'ex:b ex:p ex:o2 .\n']]);
+  await settle();
+
+  h.els.tabs.fire('click', clickOn('data-tabclose', 2));
+  assert.equal(h.els.fname.textContent, 'one.ttl');
+  h.els.tabs.fire('click', clickOn('data-tabclose', 1));
+  assert.equal(h.els.tabs.hidden, true);
+  assert.equal(h.els.fname.textContent, 'no file loaded');
+  assert.equal(h.els.reportBtn.hidden, true);
+  assert.match(h.els.src.innerHTML, /class="empty"/);
+});
+
+test('a report that arrives after its tab was closed is dropped', async () => {
+  const h = makeHarness();
+  let release;
+  runBundle(h, () => new Promise(resolve => { release = () => resolve({ ok: true, status: 200, text: async () => '' }); }));
+  pickFiles(h, [['first.ttl', WITH_TECHNIQUE]]);
+  await settle(5);
+  h.els.tabs.fire('click', clickOn('data-tabclose', 1));
+  release?.();
+  await settle();
+  assert.equal(h.els.reportBtn.hidden, true);
+  assert.equal(h.els.reportPanel.hidden, true);
 });

@@ -11,7 +11,7 @@ import { MODULES, stripModuleSyntax } from '../tools/bundle.mjs';
 import { loadN3 } from './helpers/n3.mjs';
 
 const ELEMENT_IDS = [
-  'file', 'fname', 'src', 'srcwrap', 'mini', 'miniRows', 'vp', 'side', 'pop',
+  'file', 'tabs', 'fname', 'src', 'srcwrap', 'mini', 'miniRows', 'vp', 'side', 'pop',
   'segMode', 'segFmt', 'reportBtn', 'reportPanel', 'drop',
 ];
 

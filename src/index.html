@@ -8,8 +8,10 @@
 </head>
 <body>
 <header id="bar">
-  <div class="brand" title="SOLVE-IT CASE/UCO TTL Examiner">SCUTTLE</div>
-  <label class="pick">Open file<input type="file" id="file" accept=".ttl,.turtle,text/turtle"></label>
+  <div class="brand" tabindex="0" aria-describedby="brandTip">SCUTTLE<span class="beta">beta</span>
+    <span class="tip" id="brandTip" role="tooltip"><b>S</b>OLVE-IT <b>C</b>ASE/<b>U</b>CO <b>TTL</b> <b>E</b>xaminer</span>
+  </div>
+  <label class="pick">Open file<input type="file" id="file" multiple accept=".ttl,.turtle,text/turtle"></label>
   <span class="fname" id="fname">no file loaded</span>
   <span class="spacer"></span>
   <span class="seg" id="segMode" hidden>
@@ -19,13 +21,15 @@
     <button data-f="fmt" class="on">Fields</button><button data-f="raw">Raw</button>
   </span>
   <button id="reportBtn" class="status" hidden></button>
+  <a class="srclink" href="https://github.com/chrishargreaves/scuttle" target="_blank" rel="noopener noreferrer" title="SCUTTLE source code on GitHub">Source</a>
 </header>
+<nav id="tabs" hidden aria-label="Open files"></nav>
 <main id="main">
   <div id="mini" hidden><div id="miniRows"></div><div id="vp"></div></div>
   <div id="srcwrap"><pre id="src"></pre></div>
   <aside id="side" hidden></aside>
 </main>
-<div id="drop" hidden>Drop a Turtle file here</div>
+<div id="drop" hidden>Drop Turtle files here</div>
 <div id="pop" hidden></div>
 <div id="reportPanel" hidden></div>
 <script>/*__N3__*/</script>

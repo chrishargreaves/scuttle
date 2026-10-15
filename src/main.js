@@ -4,6 +4,7 @@
 
 const els = {
   file: document.getElementById('file'),
+  tabs: document.getElementById('tabs'),
   fname: document.getElementById('fname'),
   src: document.getElementById('src'),
   srcwrap: document.getElementById('srcwrap'),
@@ -20,18 +21,20 @@ const els = {
 };
 
 const state = {
+  // One tab per open file. Each holds its parsed document, term lookup, report,
+  // resolved techniques, rendered markup and scroll position, so switching back to a
+  // file restores it without parsing or checking it again.
+  tabs: [],
+  activeId: null,
+  nextTabId: 1,
+  // The active tab's document and lookup, for the handlers that read them.
   doc: null,
   lookup: null,
-  report: null,
   mode: 'pop',
   format: 'fmt',
   history: createHistory(),
   term: null,
   anchor: null,
-  techniqueFor: {},
-  // Incremented per load. A load that awaits the network can be overtaken by a newer
-  // one; the stale continuation compares this before writing anything.
-  generation: 0,
   // iri -> [element] and line -> element, built once per document so selection does not
   // re-scan the whole pane on every click.
   refsByIri: new Map(),
@@ -42,6 +45,12 @@ const state = {
 // One resolver for the session, so the knowledge base is fetched once rather than once
 // per file opened.
 const resolver = createSolveItResolver({});
+
+const EMPTY_MESSAGE = 'Choose one or more Turtle files, or drop them onto the page.';
+
+function activeTab() {
+  return state.tabs.find(tab => tab.id === state.activeId) ?? null;
+}
 
 function setEmpty(message) {
   els.src.innerHTML = `<div class="empty">${message}</div>`;
@@ -124,7 +133,7 @@ function paint() {
       format: state.format,
       trail: state.history.trail(),
       canGoBack: state.history.canGoBack(),
-      technique: state.techniqueFor[iri] ?? null,
+      technique: activeTab()?.techniqueFor[iri] ?? null,
     });
     markOverview(iri);
     for (const marked of state.highlighted) marked.classList.remove('cur');
@@ -138,13 +147,13 @@ function paint() {
 // A technique stub resolves over the network, so it arrives after the first paint.
 async function attachTechnique(iri) {
   if (!isTechniqueIri(iri)) return;
-  const doc = state.doc;
+  const tab = activeTab();
+  if (!tab) return;
   const technique = await resolver.resolveTechnique(iri);
-  // A resolution started for one document must not write into another's state, and must
-  // not repaint a view the reader has already moved on from.
-  if (state.doc !== doc) return;
-  state.techniqueFor = { ...state.techniqueFor, [iri]: technique };
-  if (state.history.current() === iri) paint();
+  // The resolution belongs to the tab it started in, and must not repaint a view the
+  // reader has already moved on from.
+  tab.techniqueFor[iri] = technique;
+  if (tab.id === state.activeId && state.history.current() === iri) paint();
 }
 
 function openNode(iri, anchor) {
@@ -163,70 +172,165 @@ function openTerm(iri, anchor) {
 }
 
 function showReport() {
-  els.reportPanel.innerHTML = renderReportHtml(state.report);
+  const tab = activeTab();
+  if (!tab?.report) return;
+  els.reportPanel.innerHTML = renderReportHtml(tab.report);
   els.reportPanel.hidden = false;
 }
 
-async function load(text, name) {
-  // A load that awaits the network can be overtaken by a newer one. Everything written
-  // after the await is checked against this token first, so a stale continuation cannot
-  // compose a report out of one document's findings and another's graph.
-  const generation = ++state.generation;
+function showReportButton(tab) {
+  els.reportBtn.hidden = !tab.report;
+  if (!tab.report) return;
+  els.reportBtn.textContent = reportButtonLabel(tab.report);
+  els.reportBtn.classList.toggle('bad', !tab.report.clean);
+}
 
-  const lookup = makeTermLookup(window.__ONTOLOGY__);
-  const doc = loadDocument(text, { isKnownTerm: lookup.isKnown });
-  state.lookup = lookup;
-  state.doc = doc;
-  state.techniqueFor = {};
+function renderTabs() {
+  els.tabs.innerHTML = renderTabsHtml(state.tabs, state.activeId);
+  els.tabs.hidden = state.tabs.length === 0;
+}
+
+function activate(id) {
+  const tab = state.tabs.find(candidate => candidate.id === id);
+  if (!tab || tab.id === state.activeId) return;
+  const previous = activeTab();
+  if (previous) previous.scrollTop = els.srcwrap.scrollTop;
+
+  state.activeId = tab.id;
+  state.doc = tab.doc;
+  state.lookup = tab.lookup;
   closeResolved();
-
   // The outgoing document's report must not stay on screen next to the incoming
   // document's source.
   els.reportPanel.hidden = true;
-  els.reportBtn.hidden = true;
-  state.report = null;
 
-  els.fname.textContent = name;
-  els.src.innerHTML = renderSourceHtml(doc);
-  els.miniRows.innerHTML = renderOverviewHtml(doc);
+  els.fname.textContent = tab.name;
+  els.src.innerHTML = tab.sourceHtml;
+  els.miniRows.innerHTML = tab.overviewHtml;
   indexRenderedDom();
   els.mini.hidden = false;
   els.segMode.hidden = false;
   els.segFmt.hidden = false;
-  els.srcwrap.scrollTop = 0;
+  renderTabs();
+  els.srcwrap.scrollTop = tab.scrollTop;
   syncViewport();
+  showReportButton(tab);
+}
+
+function closeTab(id) {
+  const index = state.tabs.findIndex(tab => tab.id === id);
+  if (index < 0) return;
+  state.tabs.splice(index, 1);
+  if (id !== state.activeId) { renderTabs(); return; }
+
+  state.activeId = null;
+  const next = state.tabs[index] ?? state.tabs[index - 1];
+  if (next) { activate(next.id); return; }
+
+  state.doc = null;
+  state.lookup = null;
+  closeResolved();
+  els.reportPanel.hidden = true;
+  els.reportBtn.hidden = true;
+  els.mini.hidden = true;
+  els.segMode.hidden = true;
+  els.segFmt.hidden = true;
+  els.fname.textContent = 'no file loaded';
+  renderTabs();
+  setEmpty(EMPTY_MESSAGE);
+}
+
+// Parses a file into a new tab, or returns the tab already holding the same file.
+function openFile(text, name) {
+  const existing = state.tabs.find(tab => tab.name === name && tab.text === text);
+  if (existing) return existing;
+
+  const lookup = makeTermLookup(window.__ONTOLOGY__);
+  const doc = loadDocument(text, { isKnownTerm: lookup.isKnown });
+  const tab = {
+    id: state.nextTabId++,
+    name,
+    text,
+    doc,
+    lookup,
+    report: null,
+    techniqueFor: {},
+    sourceHtml: renderSourceHtml(doc),
+    overviewHtml: renderOverviewHtml(doc),
+    scrollTop: 0,
+  };
+  state.tabs.push(tab);
 
   // Look every rendered term up so the report knows what the page could not resolve.
   for (const iri of [...doc.predicates, ...doc.typeObjects]) lookup.get(iri);
+  checkTab(tab);
+  return tab;
+}
 
-  const solveitFindings = await resolver.checkOutputClasses(doc);
-  if (generation !== state.generation) return;
+async function checkTab(tab) {
+  // The check awaits the network, so the reader may have switched or closed tabs by the
+  // time it returns. The report is written to the tab it belongs to, and only shown if
+  // that tab is still the one on screen.
+  const solveitFindings = await resolver.checkOutputClasses(tab.doc);
+  if (!state.tabs.includes(tab)) return;
 
-  state.report = composeReport({
-    doc,
-    indexMeta: lookup.meta,
-    unresolvedTerms: lookup.unresolved(),
+  tab.report = composeReport({
+    doc: tab.doc,
+    indexMeta: tab.lookup.meta,
+    unresolvedTerms: tab.lookup.unresolved(),
     solveitFindings,
     solveitStatus: resolver.status(),
     unresolvedTechniques: resolver.unresolvedTechniques(),
   });
 
-  els.reportBtn.hidden = false;
-  els.reportBtn.textContent = reportButtonLabel(state.report);
-  els.reportBtn.classList.toggle('bad', !state.report.clean);
+  if (tab.id !== state.activeId) return;
+  showReportButton(tab);
   showReport();
 }
 
-function readFile(file) {
-  if (!file) return;
+async function readFiles(fileList) {
+  const files = [...(fileList ?? [])];
+  if (files.length === 0) return;
   // A File is read directly. The document never travels over the network, which is what
-  // lets this page work when opened from the filesystem.
-  file.text().then(text => load(text, file.name)).catch(error => {
-    setEmpty(`Could not read that file: ${error.message}`);
+  // lets this page work when opened from the filesystem. Files open in the order they
+  // were chosen, and the last one is shown.
+  const texts = await Promise.allSettled(files.map(file => file.text()));
+  const failures = [];
+  let last = null;
+  texts.forEach((result, i) => {
+    try {
+      if (result.status === 'rejected') throw result.reason;
+      last = openFile(result.value, files[i].name);
+    } catch (error) {
+      failures.push(`${files[i].name}: ${error.message}`);
+    }
   });
+  if (last) activate(last.id);
+  if (failures.length === 0) return;
+  const message = `Could not read ${failures.join('; ')}`;
+  if (state.tabs.length === 0) setEmpty(message);
+  else window.alert?.(message);
 }
 
-els.file.addEventListener('change', event => readFile(event.target.files[0]));
+els.file.addEventListener('change', event => {
+  readFiles(event.target.files);
+  // Clear the input so choosing the same file again still fires a change.
+  event.target.value = '';
+});
+
+els.tabs.addEventListener('click', event => {
+  const close = event.target.closest('[data-tabclose]');
+  if (close) { closeTab(Number(close.dataset.tabclose)); return; }
+  const tab = event.target.closest('[data-tab]');
+  if (tab) activate(Number(tab.dataset.tab));
+});
+
+// A middle click closes a tab, as in a browser.
+els.tabs.addEventListener('auxclick', event => {
+  if (event.button !== 1) return;
+  const tab = event.target.closest('[data-tab]');
+  if (tab) closeTab(Number(tab.dataset.tab));
+});
 
 let dragDepth = 0;
 
@@ -253,7 +357,7 @@ document.addEventListener('dragend', () => setDragging(false));
 document.addEventListener('drop', event => {
   event.preventDefault();
   setDragging(false);
-  readFile(event.dataTransfer?.files?.[0]);
+  readFiles(event.dataTransfer?.files);
 });
 
 // A copy from the pane carries the highlighting inline, so a paste into a
@@ -317,4 +421,4 @@ document.addEventListener('keydown', event => {
 });
 
 els.reportBtn.addEventListener('click', showReport);
-setEmpty('Choose a Turtle file, or drop one onto the page.');
+setEmpty(EMPTY_MESSAGE);
