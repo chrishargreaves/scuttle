@@ -32,12 +32,18 @@ runtime. SOLVE-IT technique records are fetched live from
 [data.solveit-df.org](https://data.solveit-df.org/) instead, because that host does permit
 it and its knowledge base is regenerated daily.
 
+## Using it
+
+The latest build is hosted at <https://chrishargreaves.github.io/scuttle/>. Your file is
+read in the browser and is not uploaded anywhere. To run it offline, download
+`scuttle.html` from that page, or build it yourself as below.
+
 ## Building and opening it
 
 ```bash
 npm run build:index   # regenerate the bundled definitions (needs network; cached afterwards)
 npm run build         # produce dist/scuttle.html
-npm test              # 116 tests
+npm test              # run the test suite
 ```
 
 `dist/scuttle.html` is self-contained. Open it directly from the filesystem, with no server:
@@ -94,4 +100,7 @@ The Turtle parser is [N3.js](https://github.com/rdfjs/N3.js), vendored as its UM
 positions come from the N3 lexer, which reports line and column, rather than from its
 parser, which does not put positions on quads. The two passes are joined by IRI string.
 
-`docs/plans/` holds the requirements and the technical decisions in full.
+## Licence
+
+MIT. See [LICENSE](LICENSE). N3.js is also MIT-licensed; its licence is in
+`vendor/n3-LICENSE.md`.
