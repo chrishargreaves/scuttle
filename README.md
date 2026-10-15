@@ -34,7 +34,7 @@ it and its knowledge base is regenerated daily.
 
 ## Using it
 
-The latest build is hosted at <https://chrishargreaves.github.io/scuttle/>. Your file is
+The latest build is hosted at <https://scuttle.hargs.co.uk/>. Your file is
 read in the browser and is not uploaded anywhere. To run it offline, download
 `scuttle.html` from that page, or build it yourself as below.
 
